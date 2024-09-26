@@ -1,5 +1,6 @@
 <template>
   <div class="container mx-auto max-w-4xl">
+    <AppHeader />
     <main class="my-10">
       <slot />
     </main>
@@ -27,6 +28,7 @@ useHead({
 /* Set the font family for the entire site */
 body {
   font-family: "Inter";
+  margin: 10px;
 }
 /* Set the background color for the entire site */
 body {
