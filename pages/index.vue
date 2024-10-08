@@ -10,29 +10,29 @@
       color="green"
       title="Income"
       :amount="incomeTotal"
-      :last-amount="3000"
-      :loading="isLoading"
+      :last-amount="prevIncomeTotal"
+      :loading="pending"
     />
     <Trend
       color="red"
       title="Expense"
       :amount="expenseTotal"
-      :last-amount="5000"
-      :loading="isLoading"
+      :last-amount="prevExpenseTotal"
+      :loading="pending"
     />
     <Trend
       color="green"
       title="Investments"
       :amount="4000"
       :last-amount="3000"
-      :loading="isLoading"
+      :loading="pending"
     />
     <Trend
       color="red"
       title="Saving"
       :amount="4000"
       :last-amount="4100"
-      :loading="isLoading"
+      :loading="pending"
     />
   </section>
 
@@ -56,12 +56,8 @@
     </div>
   </section>
 
-  <section v-if="!isLoading">
-    <div
-      v-for="(transactionOnDay, date) in transactionsGroupedByDate"
-      :key="date"
-      class="mb-5"
-    >
+  <section v-if="!pending">
+    <div v-for="(transactionOnDay, date) in byDate" :key="date" class="mb-5">
       <DailyTransactionSummary :date="date" :transactions="transactionOnDay" />
       <Transaction
         v-for="transaction in transactionOnDay"
@@ -80,67 +76,30 @@
 import { transactionViewOption } from "~/constants";
 const selectedView = ref(transactionViewOption[1]);
 
-const supabase = useSupabaseClient();
-const transactions = ref([]);
-const isLoading = ref(false);
+const { current, previous } = useSelectedTimePeriod(selectedView);
+
 const isOpen = ref(false);
+const {
+  pending,
+  refreshData,
+  transactions: {
+    incomeCount,
+    expenseCount,
+    incomeTotal,
+    expenseTotal,
+    grouped: { byDate },
+  },
+} = useFetchTransaction(current);
 
-const income = computed(() =>
-  transactions.value.filter((t) => t.type === "Income")
-);
-const expense = computed(() =>
-  transactions.value.filter((t) => t.type === "Expense")
-);
+await refreshData();
 
-const incomeCount = computed(() => income.value.length);
-const expenseCount = computed(() => expense.value.length);
+const {
+  refreshData: refreshPrev,
+  transactions: {
+    incomeTotal: prevIncomeTotal,
+    expenseTotal: prevExpenseTotal,
+  },
+} = useFetchTransaction(previous);
 
-const incomeTotal = computed(() =>
-  income.value.reduce((sum, transaction) => sum + transaction.amount, 0)
-);
-const expenseTotal = computed(() =>
-  expense.value.reduce((sum, transaction) => sum + transaction.amount, 0)
-);
-
-const fetchData = async () => {
-  isLoading.value = true;
-  try {
-    const { data } = await useAsyncData("transactions", async () => {
-      const { data, error } = await supabase
-        .from("transactions")
-        .select()
-        .order("created_at", { ascending: false });
-      return data;
-    });
-    return data.value;
-  } catch (error) {
-    return [];
-  } finally {
-    isLoading.value = false;
-  }
-};
-
-const refreshData = async () => (transactions.value = await fetchData());
-transactions.value = await fetchData();
-
-const transactionsGroupedByDate = computed(() => {
-  let grouped = {};
-
-  for (const transaction of transactions.value) {
-    const date = new Date(transaction.created_at).toISOString().split("T")[0];
-    if (!grouped[date]) {
-      grouped[date] = [];
-    }
-    grouped[date].push(transaction);
-  }
-
-  // const sortedKeys = Object.keys(grouped).sort().reverse()
-  // const sortedGrouped = {}
-  // for (const key of sortedKeys) {
-  //   sortedGrouped[key] = grouped[key]
-  // }
-  // return sortedGrouped
-
-  return grouped;
-});
+await refreshPrev();
 </script>
