@@ -54,7 +54,13 @@
             v-model="state.category"
           />
         </UFormGroup>
-        <UButton type="submit" color="black" variant="solid" label="Save" />
+        <UButton
+          type="submit"
+          color="black"
+          variant="solid"
+          label="Save"
+          :loading="isLoading"
+        />
       </UForm>
     </UCard>
   </UModal>
@@ -68,7 +74,7 @@ const props = defineProps({
   modelValue: Boolean,
 });
 
-const emit = defineEmits(["update:modelValue"]);
+const emit = defineEmits(["update:modelValue", "saved"]);
 
 const defaultSchema = z.object({
   created_at: z.string(),
@@ -100,9 +106,38 @@ const schema = z.intersection(
 );
 
 const form = ref([]);
+const isLoading = ref(false);
+const supabase = useSupabaseClient();
+const toast = useToast();
 
 const save = async () => {
   if (form.value.errors.length) return;
+  isLoading.value = true;
+
+  try {
+    const { error } = await supabase
+      .from("transactions")
+      .upsert({ ...state.value });
+    if (!error) {
+      toast.add({
+        title: "Transaction saved",
+        icon: "i-heroicons-check-circle",
+      });
+      isOpen.value = false;
+      emit("saved");
+      return;
+    }
+    throw error;
+  } catch (err) {
+    toast.add({
+      title: "Transaction not saved",
+      description: e.message,
+      icon: "i-heroicons-exclamation-circle",
+      color: "red",
+    });
+  } finally {
+    isLoading.value = false;
+  }
 };
 
 const initialState = {

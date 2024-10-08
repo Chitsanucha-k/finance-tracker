@@ -45,7 +45,7 @@
       </div>
     </div>
     <div>
-      <TransactionModal v-model="isOpen" />
+      <TransactionModal v-model="isOpen" @saved="refreshData()" />
       <UButton
         icon="i-heroicons-plus-circle"
         color="white"
